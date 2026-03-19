@@ -1,0 +1,1 @@
+# briefing_summary 테이블

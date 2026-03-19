@@ -1,0 +1,1 @@
+# GitHub Actions가 실행할 통합 배치 스크립트

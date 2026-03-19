@@ -1,0 +1,1 @@
+# 환경 변수 (DB_URL, OpenAI_KEY 등)

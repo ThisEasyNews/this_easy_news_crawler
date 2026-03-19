@@ -1,0 +1,1 @@
+# keyword_log 테이블

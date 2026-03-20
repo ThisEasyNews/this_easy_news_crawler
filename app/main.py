@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 import yaml
-from core.collector import fetch_news_links, extract_article_content
-from core.analyzer import get_ai_insight
+
 from dotenv import load_dotenv
 
 load_dotenv()

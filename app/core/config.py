@@ -7,11 +7,10 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "This Easy News Crawler"
     
     # DB 접속 정보 (환경 변수가 없으면 기본 로컬 DB 사용)
-    # 실제 본인의 DB 계정 정보에 맞게 수정하세요.
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:990704@localhost:5432/this_easy_news")
+    DATABASE_URL: str 
     
     # OpenAI API 키
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "your-api-key-here")
+    OPENAI_API_KEY: str 
 
     class Config:
         # .env 파일을 자동으로 읽어오도록 설정

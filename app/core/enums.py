@@ -1,0 +1,33 @@
+from enum import Enum
+
+class CodeGroup(str, Enum):
+    STATUS = "STATUS"
+    CATEGORY = "CATEGORY"
+    MEDIA = "MEDIA"
+    RSS_FEED = "RSS_FEED"
+
+class Status(str, Enum):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    DELETED = "DELETED"
+    RUNNING = "RUNNING"
+    SUCCESS = "SUCCESS"
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+    FAIL = "FAIL"
+
+class Category(str, Enum):
+    POLITICS = "CAT_POLITICS"
+    ECONOMY = "CAT_ECONOMY"
+    SOCIETY = "CAT_SOCIETY"
+    INTERNATIONAL = "CAT_INTERNATIONAL"
+    SPORTS = "CAT_SPORTS"
+    CULTURE = "CAT_CULTURE"
+    ENTERTAINMENT = "CAT_ENTERTAINMENT"
+    TECH_SCIENCE = "CAT_TECH_SCIENCE"
+
+class Media(str, Enum):
+    CHOSUN = "MED_CHOSUN"
+    MK = "MED_MK"
+    HANKYUNG = "MED_HANKYUNG"
+    KHAN = "MED_KHAN"
+    SBS = "MED_SBS"

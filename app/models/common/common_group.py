@@ -1,14 +1,13 @@
-from sqlalchemy import TIMESTAMP, Column, String, Text, DateTime, text
-from datetime import datetime
+from sqlalchemy import Column, String, TIMESTAMP, text
 from app.core.database import Base
 
 class CommonGroup(Base):
-    __tablename__ = "COMMON_GROUP"
+    __tablename__ = "common_group"  
 
-    ID = Column(String(50), primary_key=True)
-    NAME = Column(String(50), nullable=False)
-    CREATED_AT = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
-    UPDATED_AT = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
-    STATUS_CODE = Column(String(50), nullable=False, server_default="PUBLISHED")
-    START_DATE = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    END_DATE = Column(TIMESTAMP, nullable=False, server_default="'9999-12-31 23:59:59'")
+    id = Column(String(50), primary_key=True)
+    name = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+    status_code = Column(String(50), nullable=False, server_default="PUBLISHED")
+    start_date = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    end_date = Column(TIMESTAMP, nullable=False, server_default="'9999-12-31 23:59:59'")

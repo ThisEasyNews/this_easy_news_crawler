@@ -5,12 +5,12 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import engine
-from app.db.base import Base  # 모든 모델이 모여있는 base.py를 가져옵니다.
+from app.db.base import Base  # 모든 모델이 모여있는 base.py를 가져옴.
 
 def init_db():
     print("테이블 생성 시작")
     try:
-        # Base에 연결된 모든 테이블(Article, Common 등)을 실제 DB에 생성합니다.
+        # Base에 연결된 모든 테이블을 실제 DB에 생성함.
         Base.metadata.create_all(bind=engine)
         print("모든 테이블 생성 완료")
     except Exception as e:

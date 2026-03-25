@@ -12,7 +12,7 @@ from app.core.enums import CodeGroup, Status, Category, Media
 def seed_data():
     db = SessionLocal()
     try:
-        # 1. COMMON_GROUP 데이터 정의
+        # 1. common_group 데이터 정의
         groups = [
             (CodeGroup.STATUS.value, "공통 상태 관리"),
             (CodeGroup.CATEGORY.value, "뉴스 카테고리"),
@@ -21,13 +21,15 @@ def seed_data():
         ]
 
         for g_id, g_name in groups:
-            exists = db.query(CommonGroup).filter(CommonGroup.ID == g_id).first()
+            # ID -> id로 변경
+            exists = db.query(CommonGroup).filter(CommonGroup.id == g_id).first()
             if not exists:
-                db.add(CommonGroup(ID=g_id, NAME=g_name, STATUS_CODE="PUBLISHED"))
+                # 인자값을 모두 소문자로 변경
+                db.add(CommonGroup(id=g_id, name=g_name, status_code="PUBLISHED"))
                 print(f"그룹 생성: {g_id}")
         db.flush()
 
-        # 2. COMMON_DETAIL 데이터 정의 (상태, 카테고리, 언론사)
+        # 2. common_detail 데이터 정의 (상태, 카테고리, 언론사)
         status = [
             (Status.DRAFT.value, CodeGroup.STATUS.value, "임시", None), 
             (Status.PUBLISHED.value, CodeGroup.STATUS.value, "게시", None), 
@@ -98,19 +100,21 @@ def seed_data():
         final_details = status + category + media + rss_feeds
 
         for d_id, g_id, d_name, d_val in final_details:
-            exists = db.query(CommonDetail).filter(CommonDetail.ID == d_id).first()
+            # ID -> id로 변경
+            exists = db.query(CommonDetail).filter(CommonDetail.id == d_id).first()
             if not exists:
+                # 인자값을 모두 소문자로 변경
                 db.add(CommonDetail(
-                    ID=d_id, 
-                    GROUP_ID=g_id, 
-                    NAME=d_name, 
-                    CODE_VALUE=d_val, 
-                    STATUS_CODE="PUBLISHED"
+                    id=d_id, 
+                    group_id=g_id, 
+                    name=d_name, 
+                    code_value=d_val, 
+                    status_code="PUBLISHED"
                 ))
                 print(f"상세 코드 추가: {d_name} ({d_id})")
 
         db.commit()
-        print("\n모든 초기 데이터 주입 완료")
+        print("\n✅ 모든 초기 데이터 주입 완료")
 
     except Exception as e:
         db.rollback()

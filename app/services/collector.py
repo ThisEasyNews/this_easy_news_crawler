@@ -1,122 +1,175 @@
-# RSS 수집, newspaper3k 원문 추출
+import asyncio
+import httpx
 import feedparser
-from newspaper import Article as NewsArticle
-from sqlalchemy.orm import Session
-from datetime import datetime
-from calendar import timegm
 import time
 from newspaper import Config
+from newspaper import Article as NewsArticle
+from sqlalchemy.orm import Session
+from datetime import datetime, date, timedelta
 
 from app.models.common.common_detail import CommonDetail
 from app.models.article import Article
-from app.models.news_summary import NewsSummary
-from app.core.enums import CodeGroup, Status 
-from app.utils.cleaner import clean_text
+from app.core.database import SessionLocal
+from app.core.enums import CodeGroup, Status
 
-def fetch_rss_feeds(db: Session):
-    # DB에서 RSS URL 목록 가져오기
-    return db.query(CommonDetail).filter(
-        CommonDetail.GROUP_ID == CodeGroup.RSS_FEED.value
-    ).limit(5).all()
+# 설정: 동시 접속 제한
+MAX_CONCURRENT_TASKS = 10 
+semaphore = asyncio.Semaphore(MAX_CONCURRENT_TASKS)
 
-def get_category_id(feed_id: str) -> str:
-    #  ID에서 카테고리 코드 추출
-    parts = feed_id.split("_", 1) # 첫 번째 "_"에서만 자름
-    if len(parts) > 1:
-        raw_category = parts[1] 
-    else:
-        raw_category = "SOCIETY"
-    return f"CAT_{raw_category}"
+async def fetch_and_parse(url):
+    """비동기로 HTML을 가져와서 newspaper3k로 파싱 (추출 최적화)"""
+    async with semaphore:
+        # 1. 브라우저처럼 보이기 위한 설정 추가
+        config = Config()
+        config.browser_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        config.request_timeout = 15
+        
+        timeout_config = httpx.Timeout(15.0, connect=5.0)
+        async with httpx.AsyncClient(timeout=timeout_config, follow_redirects=True) as client:
+            try:
+                response = await client.get(url)
+                if response.status_code == 200:
+                    news = NewsArticle(url, language='ko', config=config)
+                    news.set_html(response.text)
+                    news.parse()
+                    return news
+            except Exception as e:
+                return e
+            return None
 
-def get_published_at(entry, news_obj) -> datetime:
-    # RSS entry 또는 뉴스 본문에서 발행일 추출
-    if hasattr(entry, 'published_parsed') and entry.published_parsed:
-        return datetime.fromtimestamp(timegm(entry.published_parsed))
-    # RSS에 없으면 newspaper3k 추출값, 그것도 없으면 현재시간
-    return news_obj.publish_date or datetime.now()
-
-def process_article(db: Session, entry, feed_info, config) -> str:
-    # 단일 기사를 다운로드하고 DB에 저장
+async def process_single_article(db_session: Session, entry, feed_info):
     article_url = entry.link
     
-    # 중복 체크
-    if db.query(Article).filter(Article.URL == article_url).first():
+    # 1. 발행일 확인 (오늘 데이터만 수집)
+    # feedparser의 published_parsed를 사용하여 날짜 비교
+    pub_date = None
+    if hasattr(entry, 'published_parsed') and entry.published_parsed:
+        pub_date = date(*entry.published_parsed[:3]) # (년, 월, 일) 추출
+    
+    if pub_date not in [date.today(), date.today() - timedelta(days=1)]:
+        return "not_today"
+
+    # 2. 중복 체크
+    if db_session.query(Article).filter(Article.url == article_url).first():
         return "skipped"
 
-    try:
-        # 뉴스 추출 (config 전달 확인!)
-        news = NewsArticle(article_url, language='ko', config=config)
-        news.download()
-        news.parse()
-
-        cleaned_content = news.text # 필요시 clean_text(news.text) 사용
-        
-        if len(cleaned_content) < 100:
-            return "failed"
-
-        # 데이터 매핑
-        new_article = Article(
-            ORIGINAL_TITLE=entry.title,
-            URL=article_url,
-            CONTENT=cleaned_content,
-            MEDIA_ID=feed_info.ID,
-            CATEGORY_ID=get_category_id(feed_info.ID),
-            PUBLISHED_AT=get_published_at(entry, news),
-            SCRAPED_AT=datetime.now(),
-            STATUS_CODE=Status.PUBLISHED.value,
-            IS_SUMMARIZED=False
-        )
-        db.add(new_article)
-        return "success"
-        
-    except Exception as e:
-        print(f"  [!] 수집 실패 ({article_url}): {e}")
+    # 3. 비동기 본문 추출
+    result = await fetch_and_parse(article_url)
+    
+    # 실패 케이스 처리
+    if isinstance(result, Exception):
+        print(f"    [!] 수집 실패 ({article_url}): {str(result)}")
         return "failed"
-    
-def collect_news_task(db: Session):
+    if isinstance(result, Exception) or not result or len(result.text) < 100:
+        print(f"    [!] 수집 실패 ({article_url}): 본문 길이 미달 혹은 추출 불가")
+        return "failed"
+
+    try:
+        id_parts = feed_info.id.split('_', 1) 
+        media_code = id_parts[0]            
+        category_code = id_parts[1]
+
+        # 4. 데이터 매핑 (요청하신 구조 적용)
+        new_article = Article(
+            original_title=entry.title,
+            url=article_url,
+            feedparser_content=result.text,      
+            crawler_content=None,               # 현재는 미사용
+            description=entry.get('summary', ''),
+            image_url=result.top_image,
+            media_id=f"MED_{media_code}",
+            category_id=f"CAT_{category_code}",
+            published_at=result.publish_date or datetime.now(),
+            scraped_at=datetime.now(),
+            status_code=Status.PUBLISHED.value,
+            is_summarized=False
+        )
+        db_session.add(new_article)
+        db_session.commit()
+        return "success"
+    except Exception as e:
+        db_session.rollback()
+        print(f"    [!] DB 저장 실패: {str(e)}")
+        return "failed"
+
+async def collect_single_feed(db: Session, feed_info):
+    print(f"  ▶ [수집 시작] {feed_info.name} ({feed_info.code_value})")
     start_time = time.time()
-    stats = {"total_feeds": 0, "new_articles": 0, "skipped_articles": 0, "failed_articles": 0}
-
-    rss_feeds = fetch_rss_feeds(db)
-    stats["total_feeds"] = len(rss_feeds)
     
-    config = Config()
-    config.browser_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
-    for feed_info in rss_feeds:
-        print(f"[*] 수집 시작: {feed_info.NAME}")
-        parsed_feed = feedparser.parse(feed_info.CODE_VALUE)
-        
-        for entry in parsed_feed.entries:
-            # 개별 기사 처리 호출
-            result = process_article(db, entry, feed_info, config)
+    try:
+        # httpx를 사용하여 RSS XML을 직접 가져옴 (feedparser 직접 호출보다 안정적)
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            response = await client.get(feed_info.code_value.strip())
+            # 조선일보 등 인코딩 이슈 대응을 위해 content(bytes) 사용
+            parsed_feed = feedparser.parse(response.content)
             
-            # 결과 통계 업데이트
-            if result == "success":
-                stats["new_articles"] += 1
-                time.sleep(2.0) # 성공했을 때만 대기하여 효율성 증대
-            elif result == "skipped":
-                stats["skipped_articles"] += 1
-            else:
-                stats["failed_articles"] += 1
+        if not parsed_feed.entries:
+            print(f"    [!] 데이터를 찾을 수 없습니다. (피드가 비어있거나 형식이 잘못됨)")
+            return []
+
+        tasks = [process_single_article(db, entry, feed_info) for entry in parsed_feed.entries]
+        results = await asyncio.gather(*tasks)
         
-        db.commit() # 피드 단위 커밋
+        success = results.count("success")
+        not_today = results.count("not_today")
+        duration = round(time.time() - start_time, 2)
+        
+        print(f"  ■ [수집 종료] {feed_info.name} | 성공: {success}건 (과거/중복 제외: {not_today + results.count('skipped')}건) | 소요: {duration}초")
+        return results
 
-    duration = round(time.time() - start_time, 2)
-    print_summary(stats, duration) # 요약 출력 함수(선택사항) 분리 가능
+    except Exception as e:
+        print(f"    [!] RSS 접속 실패 ({feed_info.name}): {str(e)}")
+        return []
+
+async def collect_by_category(category_name: str):
+    db = SessionLocal()
+    cat_stats = {"total": 0, "success": 0, "skipped": 0, "failed": 0, "not_today": 0}
     
-    return {**stats, "duration": duration}
+    try:
+        feeds = db.query(CommonDetail).filter(
+            CommonDetail.group_id == CodeGroup.RSS_FEED.value,
+            CommonDetail.id.like(f"%_{category_name}")
+        ).all()
 
+        if not feeds:
+            return cat_stats
 
-def print_summary(stats: dict, duration: float):
-    # 수집 결과를 터미널에 표 형태로 출력
-    print("\n" + "="*40)
-    print(f"       🏁 [뉴스 수집 작업 완료]       ")
-    print("-" * 40)
-    print(f" ⏱  총 소요 시간  : {duration}초")
-    print(f" 📁 대상 피드 수  : {stats['total_feeds']}개")
-    print("-" * 40)
-    print(f" ✅ 신규 수집     : {stats['new_articles']}건")
-    print(f" ⏭  중복 스킵     : {stats['skipped_articles']}건")
-    print(f" ❌ 수집 실패     : {stats['failed_articles']}건")
-    print("=" * 40 + "\n")
+        print(f"\n🚀 === [{category_name}] 카테고리 오늘 뉴스 수집 === ")
+        
+        feed_tasks = [collect_single_feed(db, feed) for feed in feeds]
+        all_feed_results = await asyncio.gather(*feed_tasks)
+        
+        for feed_result in all_feed_results:
+            cat_stats["total"] += len(feed_result)
+            cat_stats["success"] += feed_result.count("success")
+            cat_stats["skipped"] += feed_result.count("skipped")
+            cat_stats["failed"] += feed_result.count("failed")
+            cat_stats["not_today"] += feed_result.count("not_today")
+        
+        return cat_stats
+    finally:
+        db.close()
+
+async def run_all_categories():
+    categories = ["POLITICS", "ECONOMY", "SOCIETY", "INTERNATIONAL", "SPORTS", "CULTURE", "ENTERTAINMENT", "TECH_SCIENCE"]
+    total_stats = {"total": 0, "success": 0, "skipped": 0, "failed": 0, "not_today": 0}
+    total_start = time.time()
+    
+    for cat in categories:
+        cat_result = await collect_by_category(cat)
+        for key in total_stats:
+            total_stats[key] += cat_result[key]
+    
+    duration = round(time.time() - total_start, 2)
+    
+    print("\n" + "="*50)
+    print(f"🏆 [오늘의 뉴스 수집 리포트]")
+    print(f"⏱ 총 소요시간: {duration}초")
+    print(f"✅ 오늘 신규 저장: {total_stats['success']}건")
+    print(f"⏭ 중복 제외: {total_stats['skipped']}건")
+    print(f"📅 과거 기사 제외: {total_stats['not_today']}건")
+    print(f"❌ 수집 실패: {total_stats['failed']}건")
+    print("="*50)
+
+if __name__ == "__main__":
+    asyncio.run(run_all_categories())

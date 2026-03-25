@@ -5,6 +5,7 @@ class Article(Base):
     __tablename__ = "article"  
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    summary_id = Column(Integer, ForeignKey("news_summary.id"))  
     media_id = Column(String(50), ForeignKey("common_detail.id"))
     category_id = Column(String(50), ForeignKey("common_detail.id"))
     original_title = Column(String(1000), nullable=False)

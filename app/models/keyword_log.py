@@ -5,9 +5,10 @@ class KeywordLog(Base):
     __tablename__ = "keyword_log" 
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    keyword_id = Column(String(50), ForeignKey("news_keyword.id", ondelete="CASCADE"), nullable=False)
+    keyword_id = Column(Integer, ForeignKey("news_keyword.id", ondelete="CASCADE"), nullable=False)
     target_date = Column(Date, nullable=False)
     mention_count = Column(Integer, server_default="1")
+    status_code = Column(String(50), nullable=False, server_default="PUBLISHED")
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
     updated_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
 

@@ -1,10 +1,11 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP, Date, Text, text
+from sqlalchemy import Column, Integer, String, TIMESTAMP, Date, Text, text, ForeignKey
 from app.core.database import Base
 
 class NewsSummary(Base):
     __tablename__ = "news_summary"  
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    article_id = Column(Integer, ForeignKey("article.id"))  
     summary_type = Column(String(50), nullable=False, server_default="GENERAL")
     title = Column(String(1000), nullable=False)
     summary_content = Column(Text, nullable=False)

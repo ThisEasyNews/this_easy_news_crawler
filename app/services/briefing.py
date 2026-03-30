@@ -88,12 +88,16 @@ async def create_daily_briefing(db: Session):
                 title=briefing_title,
                 content=context_text,
                 instruction=briefing_instruction
-            )
+            )  
+            summary_content = res_data.get('summary')
+            if not summary_content:
+                print(f"❌ '{target_kw_text}' 요약 내용이 비어있어 저장을 취소합니다.")
+                continue
 
             # 6. 뉴스 요약 테이블(NewsSummary)에 브리핑 본체 저장
             new_briefing = NewsSummary(
                 title=res_data.get('title', briefing_title),
-                summary_content=res_data.get('summary'),
+                summary_content=summary_content,
                 insight=res_data.get('insight'),
                 ai_model="gpt-4o-mini",
                 top_image_url=final_image_url,

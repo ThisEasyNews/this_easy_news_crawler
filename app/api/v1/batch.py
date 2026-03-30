@@ -115,23 +115,23 @@ def get_collection_stats(db: db_dep):
         raise HTTPException(status_code=500, detail=f"통계 조회 실패: {str(e)}")
 
 
-@router.post("/collect-and-summarize", summary="수집 후 즉시 요약 실행",
-             responses={
-        200: {"description": "백그라운드 수집 및 요약 시작 성공"},
-        500: {"description": "작업 스케줄링 실패"}
-        }
-    )
-async def collect_and_summarize(background_tasks: BackgroundTasks):
-    """수집이 끝난 직후 요약을 연속으로 실행합니다."""
-    try:
-        async def run_full_batch():
-            await run_collection_process()
-            await run_summary_process(limit=5)
+# @router.post("/collect-and-summarize", summary="수집 후 즉시 요약 실행",
+#              responses={
+#         200: {"description": "백그라운드 수집 및 요약 시작 성공"},
+#         500: {"description": "작업 스케줄링 실패"}
+#         }
+#     )
+# async def collect_and_summarize(background_tasks: BackgroundTasks):
+#     """수집이 끝난 직후 요약을 연속으로 실행합니다."""
+#     try:
+#         async def run_full_batch():
+#             await run_collection_process()
+#             await run_summary_process(limit=5)
 
-        background_tasks.add_task(run_full_batch)
-        return {"message": "수집 및 요약 연속 작업이 백그라운드에서 시작되었습니다."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"작업 등록 실패: {str(e)}")
+#         background_tasks.add_task(run_full_batch)
+#         return {"message": "수집 및 요약 연속 작업이 백그라운드에서 시작되었습니다."}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"작업 등록 실패: {str(e)}")
 
     
 @router.post("/today-briefing", 

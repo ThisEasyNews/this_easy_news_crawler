@@ -4,6 +4,7 @@ import feedparser
 import time
 from newspaper import Config
 from newspaper import Article as NewsArticle
+from sqlalchemy import not_
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta
 
@@ -128,7 +129,9 @@ async def collect_by_category(category_name: str):
     try:
         feeds = db.query(CommonDetail).filter(
             CommonDetail.group_id == CodeGroup.RSS_FEED.value,
-            CommonDetail.id.like(f"%_{category_name}")
+            CommonDetail.id.like(f"%_{category_name}"),
+            not_(CommonDetail.id.like("CHOSUN_%")), # 임의로 조선일보 피드 제외 (feedparser 형식과 달라 데이터 수집 실패 빈번)
+            not_(CommonDetail.id.like("KHAN_%")) # 임의로 조선일보 피드 제외 (feedparser 형식과 달라 데이터 수집 실패 빈번)
         ).all()
 
         if not feeds:

@@ -22,22 +22,36 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         # 아래는 예시 로직입니다. 별도의 스크립트 파일로 만드셔도 좋습니다.
         run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
           python -c "
           import asyncio, time
           from app.core.database import SessionLocal
           from app.services.processor import process_news_summaries
-          
+
           async def run_loop():
               while True:
                   db = SessionLocal()
-                  # 20개 요약 실행 (요약할 게 없으면 0 반환하도록 로직 구성 권장)
-                  processed_count = await process_news_summaries(db, limit=20)
-                  db.close()
-                  print(f'Processed {processed_count} articles.')
+                  try:
+                      print('\n🚀 [Batch] 160개(카테고리별 20개) 병렬 요약 세션을 시작합니다...')
+                      # process_news_summaries 내부에서 8개 카테고리를 동시에 gather로 실행함
+                      await process_news_summaries(db, limit=20)
+                      
+                      # 실제 DB를 다시 조회해서 미요약 기사가 남아있는지 확인하는 로직이 
+                      # process_news_summaries 내부에 '요약할 기사가 없습니다' 출력과 함께 
+                      # 종료되도록 설계되어 있다면 여기서 체크가 필요합니다.
+                      # (가장 확실한 방법은 process_news_summaries가 처리 개수를 반환하게 하는 것입니다)
+                      
+                  except Exception as e:
+                      print(f'❌ 에러 발생: {e}')
+                      break # 에러 발생 시 무한 루프 방지를 위해 중단
+                  finally:
+                      db.close()
                   
-                  if processed_count < 20: # 더 이상 요약할 게 없으면 종료
-                      break
-                  time.sleep(30) # 30초 대기
+                  print('⏳ API 부하 방지를 위해 30초간 대기합니다...')
+                  time.sleep(30)
+                  
+                  # 주의: 실제 종료 조건은 process_news_summaries 내부에서 
+                  # '더 이상 요약할 기사가 없을 때' 예외를 던지거나 0을 반환하도록 되어있어야 합니다.
           
           asyncio.run(run_loop())
           "

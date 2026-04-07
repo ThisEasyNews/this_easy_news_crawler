@@ -20,3 +20,6 @@ class Settings(BaseSettings):
 
 # 중요: 이 라인이 있어야 다른 파일에서 'from app.core.config import settings'가 가능합니다.
 settings = Settings()
+
+if not settings.DATABASE_URL:
+    print("⚠️ 경고: DATABASE_URL 환경 변수를 찾을 수 없습니다!")

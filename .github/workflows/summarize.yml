@@ -37,7 +37,7 @@ jobs:
                   
                   if processed_count < 20: # 더 이상 요약할 게 없으면 종료
                       break
-                  time.sleep(180) # 3분(180초) 대기
+                  time.sleep(30) # 30초 대기
           
           asyncio.run(run_loop())
           "

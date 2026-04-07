@@ -1,0 +1,43 @@
+name: News Summarize Batch
+
+on:
+  workflow_run:
+    workflows: ["News Collect Batch"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  summarize:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.10' }
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run Recursive Summary
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        # 아래는 예시 로직입니다. 별도의 스크립트 파일로 만드셔도 좋습니다.
+        run: |
+          python -c "
+          import asyncio, time
+          from app.core.database import SessionLocal
+          from app.services.processor import process_news_summaries
+          
+          async def run_loop():
+              while True:
+                  db = SessionLocal()
+                  # 20개 요약 실행 (요약할 게 없으면 0 반환하도록 로직 구성 권장)
+                  processed_count = await process_news_summaries(db, limit=20)
+                  db.close()
+                  print(f'Processed {processed_count} articles.')
+                  
+                  if processed_count < 20: # 더 이상 요약할 게 없으면 종료
+                      break
+                  time.sleep(180) # 3분(180초) 대기
+          
+          asyncio.run(run_loop())
+          "

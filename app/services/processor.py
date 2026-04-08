@@ -152,7 +152,7 @@ async def process_news_summaries(db: Session, limit: int = 5):
 
     if not category_ids:
         print("[*] 요약할 새로운 기사가 없습니다.")
-        return
+        return 0
 
     print(f"🚀 총 {len(category_ids)}개 카테고리를 동시에 요약 시작합니다.")
     total_start_time = time.time()

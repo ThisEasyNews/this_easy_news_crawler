@@ -1,12 +1,14 @@
 name: Daily Briefing Batch
 
 on:
-  schedule:
-    - cron: '30 0 * * *' # KST 09:30
+  workflow_run:
+    workflows: ["News Summarize Batch"]
+    types: [completed]
   workflow_dispatch:
 
 jobs:
   briefing:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

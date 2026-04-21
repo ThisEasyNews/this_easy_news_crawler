@@ -159,12 +159,14 @@ async def process_news_summaries(db: Session, limit: int = 5):
 
     # 2. 모든 카테고리 작업을 태스크로 생성하여 동시에 실행
     cat_tasks = [process_category_batch(db, c_id, limit) for c_id in category_ids]
-    
+
     # [핵심] 여기서 모든 카테고리가 동시에 발사됩니다.
-    await asyncio.gather(*cat_tasks)
+    results = await asyncio.gather(*cat_tasks)
 
     total_end_time = time.time()
+    total_attempted = sum(r[1] for r in results)
     print(f"\n✨ 모든 작업 완료. 실제 병렬 소요 시간: {total_end_time - total_start_time:.2f}초")
+    return total_attempted
 
 
 # async def process_news_summaries(db: Session, limit: int = 100):

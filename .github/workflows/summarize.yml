@@ -48,8 +48,8 @@ jobs:
                       db.close()
                   
                   # 여기까지 왔다면 할 일이 더 남았다는 뜻이므로 휴식 후 다시 루프
-                  print(f'⏳ {processed_count}개 세션 완료. 30초 대기 후 다음 묶음 시작...')
-                  time.sleep(30)
+                  print(f'⏳ {processed_count}개 세션 완료. 60초 대기 후 다음 묶음 시작...')
+                  time.sleep(60)
           
           asyncio.run(run_loop())
           "

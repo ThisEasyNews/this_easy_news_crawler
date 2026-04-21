@@ -48,12 +48,14 @@ def _process_keywords(db: Session, summary_id: int, keywords: list, target_date:
         if log_entry:
             log_entry.mention_count += 1
         else:
-            db.add(KeywordLog(
+            new_log = KeywordLog(
                 keyword_id=keyword_obj.id,
                 target_date=today,
                 mention_count=1,
                 status_code="PUBLISHED"
-            ))
+            )
+            db.add(new_log)
+            db.flush()  # 같은 배치 내 동일 키워드 중복 INSERT 방지
 
 
 async def _analyze_single_article(article: Article):

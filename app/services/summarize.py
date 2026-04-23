@@ -15,12 +15,21 @@ from app.utils.gpt_client import get_gpt_analysis, get_insight_instruction
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
+KST = timezone(timedelta(hours=9))
+
 def get_similarity(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
+def _to_kst_date(dt: datetime | None):
+    """UTC datetime(naive/aware)을 KST 날짜로 변환. None이면 현재 KST 날짜 반환."""
+    if dt is None:
+        return datetime.now(timezone.utc).astimezone(KST).date()
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(KST).date()
+
 def _process_keywords(db: Session, summary_id: int, keywords: list, target_date: datetime):
-    base_date = target_date if target_date else datetime.now(timezone.utc)
-    today = base_date.date()
+    today = _to_kst_date(target_date)
 
     for kw_text in keywords:
         kw_text = kw_text.strip()
@@ -117,7 +126,7 @@ def _bulk_save(db: Session, analysis_results: list):
             insight=res_data.get('insight'),
             ai_model="gpt-4o-mini",
             top_image_url=article.image_url,
-            target_date=article.published_at.date() if article.published_at else datetime.now(timezone.utc).date(),
+            target_date=_to_kst_date(article.published_at),
         )
         db.add(new_summary)
         summary_mappings.append((article, res_data, new_summary))

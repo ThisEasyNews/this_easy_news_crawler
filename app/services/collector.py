@@ -6,15 +6,28 @@ from newspaper import Config
 from newspaper import Article as NewsArticle
 from sqlalchemy import not_
 from sqlalchemy.orm import Session
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 from app.models.common.common_detail import CommonDetail
 from app.models.article import Article
 from app.core.database import SessionLocal
 from app.core.enums import CodeGroup, Status
 
+KST = timezone(timedelta(hours=9))
+
+def to_utc(dt: datetime | None) -> datetime | None:
+    """
+    naive datetime → KST로 간주 후 UTC 변환
+    aware datetime → 해당 timezone 기준으로 UTC 변환
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=KST)
+    return dt.astimezone(timezone.utc)
+
 # 설정: 동시 접속 제한
-MAX_CONCURRENT_TASKS = 10 
+MAX_CONCURRENT_TASKS = 10
 semaphore = asyncio.Semaphore(MAX_CONCURRENT_TASKS)
 
 async def fetch_and_parse(url):
@@ -80,8 +93,9 @@ async def process_single_article(db_session: Session, entry, feed_info):
             image_url=result.top_image,
             media_id=f"MED_{media_code}",
             category_id=f"CAT_{category_code}",
-            published_at=result.publish_date or datetime.now(),
-            scraped_at=datetime.now(),
+            # 한국 기사의 경우, 발행일이 KST로 제공되는 경우가 많으므로, to_utc 함수를 사용하여 UTC로 변환 후 저장
+            published_at=to_utc(result.publish_date) or datetime.now(timezone.utc),
+            scraped_at=datetime.now(timezone.utc),
             status_code=Status.PUBLISHED.value,
             is_summarized=False
         )

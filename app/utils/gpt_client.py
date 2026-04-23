@@ -15,11 +15,10 @@ def get_insight_instruction(mode: str = "general", category_id: int = None, keyw
         keywords_str = ", ".join(keyword_list)
         return (
             f"오늘의 주요 키워드({keywords_str})를 중심으로 "
-            "전체 뉴스를 관통하는 핵심 흐름과 시사점을 한 줄의 인사이트로 정리하세요."
+            "전체 뉴스를 관통하는 핵심 흐름과 시사점을 한 줄의 인사이트로 정리해줘."
         )
     
     # 2. 인사이트 추출 대상 카테고리 정의 (Enum 사용)
-    # 만약 category_id가 DB에서 꺼낸 숫자라면, Category(category_id)로 변환해서 비교하는 것이 안전합니다.
     TARGET_CATEGORIES = [Category.POLITICS, Category.ECONOMY, Category.TECH_SCIENCE]
     
     # 입력받은 id가 Enum에 정의된 값인지 확인 (타입에 따라 변환이 필요할 수 있음)
@@ -35,15 +34,15 @@ def get_insight_instruction(mode: str = "general", category_id: int = None, keyw
 
     
     # 3. 개별 기사 요약 기본 지침
-    base_instr = "기사의 핵심 내용을 파악하여 향후 전망이나 독자가 주목해야 할 포인트를 한 문장의 '인사이트'로 제시하세요."
+    base_instr = "기사의 핵심 내용을 파악하여 향후 전망이나 독자가 주목해야 할 포인트를 한 문장의 '인사이트'로 제시해줘."
     
     # 4. 대상 카테고리별 특화 지침 (숫자 대신 Enum으로 비교)
     if current_cat == Category.ECONOMY:
-        return f"{base_instr} 시장의 변동성이나 투자자 관점의 시사점을 포함하세요."
+        return f"{base_instr} 시장의 변동성이나 투자자 관점의 시사점을 포함해줘."
     elif current_cat == Category.POLITICS:
-        return f"{base_instr} 정당 간의 이해관계나 향후 정국에 미칠 파급력을 분석하세요."
+        return f"{base_instr} 정당 간의 이해관계나 향후 정국에 미칠 파급력을 분석해줘."
     elif current_cat == Category.TECH_SCIENCE:
-        return f"{base_instr} 해당 기술의 상용화 가능성이나 산업 지형도 변화를 분석하세요."
+        return f"{base_instr} 해당 기술의 상용화 가능성이나 산업 지형도 변화를 분석해줘."
     
     return base_instr
 

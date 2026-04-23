@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, exists
-from datetime import datetime
+from datetime import datetime, timezone
 
 # 모델 임포트 (프로젝트 구조에 맞게 경로를 확인하세요)
 from app.models.news_summary import NewsSummary
@@ -12,10 +12,8 @@ from app.models.article import Article
 from app.utils.gpt_client import get_gpt_analysis, get_insight_instruction
 
 async def create_daily_briefing(db: Session):
-    """
-    오늘의 상위 10개 키워드 각각에 대해 개별적인 3분 브리핑 생성 및 저장
-    """
-    today = datetime.now().date()
+    """오늘의 상위 10개 키워드 각각에 대해 개별적인 3분 브리핑 생성 및 저장"""
+    today = datetime.now(timezone.utc).date()
 
     # 1. 오늘 가장 많이 언급된 상위 키워드 10개 추출
     top_keywords_data = (
@@ -103,7 +101,7 @@ async def create_daily_briefing(db: Session):
                 top_image_url=final_image_url,
                 target_date=today,
                 summary_type="BRIEFING",
-                created_at=datetime.now()
+                created_at=datetime.now(timezone.utc)
             )
             db.add(new_briefing)
             db.flush()

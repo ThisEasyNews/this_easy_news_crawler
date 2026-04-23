@@ -1,6 +1,6 @@
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from openai import AsyncOpenAI
 from sqlalchemy.orm import Session
 from difflib import SequenceMatcher
@@ -19,7 +19,7 @@ def get_similarity(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
 def _process_keywords(db: Session, summary_id: int, keywords: list, target_date: datetime):
-    base_date = target_date if target_date else datetime.now()
+    base_date = target_date if target_date else datetime.now(timezone.utc)
     today = base_date.date()
 
     for kw_text in keywords:
@@ -109,6 +109,7 @@ def _bulk_save(db: Session, analysis_results: list):
 
     # 1. NewsSummary 전체 추가 후 flush로 ID 한 번에 확보
     summary_mappings = []
+
     for article, res_data in analysis_results:
         new_summary = NewsSummary(
             title=res_data.get('title') or article.original_title,
@@ -116,8 +117,7 @@ def _bulk_save(db: Session, analysis_results: list):
             insight=res_data.get('insight'),
             ai_model="gpt-4o-mini",
             top_image_url=article.image_url,
-            target_date=article.published_at.date() if article.published_at else datetime.now().date(),
-            created_at=datetime.now()
+            target_date=article.published_at.date() if article.published_at else datetime.now(timezone.utc).date(),
         )
         db.add(new_summary)
         summary_mappings.append((article, res_data, new_summary))

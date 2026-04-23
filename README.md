@@ -52,7 +52,7 @@ this_easy_news_crawler/
 │   │   └── batch_log.py
 │   ├── services/
 │   │   ├── collector.py       # RSS 수집 서비스
-│   │   ├── processor.py       # AI 요약 처리 서비스
+│   │   ├── summmarize.py       # AI 요약 처리 서비스
 │   │   └── briefing.py        # 브리핑 생성 서비스
 │   └── utils/
 │       ├── gpt_client.py      # OpenAI API 클라이언트

@@ -25,7 +25,7 @@ jobs:
           python -c "
           import asyncio, time
           from app.core.database import SessionLocal
-          from app.services.processor import process_news_summaries
+          from app.services.summarize import process_news_summaries
 
           async def run_loop():
               while True:
